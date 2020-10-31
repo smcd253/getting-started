@@ -12,8 +12,8 @@
 
 #include "azure_iot_ciphersuites.h"
 
-#define NX_AZURE_IOT_STACK_SIZE  (2*1024)
-#define AZURE_IOT_STACK_SIZE     (3*1024)
+#define NX_AZURE_IOT_STACK_SIZE  (3*1024) // MOD
+#define AZURE_IOT_STACK_SIZE     (5*1024) // MOD
 #define AZURE_IOT_HOST_NAME_SIZE 128
 #define AZURE_IOT_DEVICE_ID_SIZE 64
 
@@ -77,6 +77,30 @@ UINT azure_iot_nx_client_dps_create(AZURE_IOT_NX_CONTEXT* context,
     CHAR* dps_id_scope,
     CHAR* dps_registration_id,
     CHAR* device_sas_key,
+    CHAR* device_model_id);
+
+UINT azure_iot_nx_client_x509_create_common(AZURE_IOT_NX_CONTEXT* context,
+    CHAR* iot_hub_hostname,
+    CHAR* iot_device_id,
+    CHAR* device_model_id,
+    UCHAR* device_cert,
+    UINT x509_cert_len,
+    UCHAR* private_key,
+    UINT x509_key_len,
+    NX_SECURE_X509_CERT* device_certificate_ptr);
+
+UINT azure_iot_nx_client_dps_x509_create(AZURE_IOT_NX_CONTEXT* context,
+    NX_IP* nx_ip,
+    NX_PACKET_POOL* nx_pool,
+    NX_DNS* nx_dns,
+    UINT (*unix_time_callback)(ULONG* unix_time),
+    CHAR* dps_endpoint,
+    CHAR* dps_id_scope,
+    CHAR* dps_registration_id,
+    UCHAR* device_cert,
+    UINT x509_cert_len,
+    UCHAR* private_key,
+    UINT x509_key_len,
     CHAR* device_model_id);
 
 UINT azure_iot_nx_client_delete(AZURE_IOT_NX_CONTEXT* context);

@@ -217,6 +217,144 @@ static VOID event_thread(ULONG parameter)
     }
 }
 
+NX_SECURE_X509_CERT device_certificate;
+// NX_SECURE_X509_CERT iot_hub_device_certificate;
+UINT azure_iot_nx_client_x509_create_common(AZURE_IOT_NX_CONTEXT* context,
+    CHAR* iot_hub_hostname,
+    CHAR* iot_device_id,
+    CHAR* device_model_id,
+    UCHAR* device_cert,
+    UINT x509_cert_len,
+    UCHAR* private_key,
+    UINT x509_key_len,
+    NX_SECURE_X509_CERT* device_certificate_ptr)
+{
+    UINT status;
+
+    printf("Initializing Azure IoT Hub client\r\n");
+    printf("\tHub hostname: %s\r\n", iot_hub_hostname);
+    printf("\tDevice id: %s\r\n", iot_device_id);
+    printf("\tModel id: %s\r\n", device_model_id);
+
+    if ((status = tx_event_flags_create(&context->events, "nx_client")))
+    {
+        printf("ERROR: failed on create nx_client event flags (0x%08x)\r\n", status);
+        return status;
+    }
+
+    // Initialize CA certificate.
+    printf("----- INITIALIZE ROOT CA CERTIFICATE -----\n");
+    if ((status = nx_secure_x509_certificate_initialize(&context->root_ca_cert,
+             (UCHAR*)azure_iot_root_ca,
+             (USHORT)azure_iot_root_ca_len,
+             NX_NULL,
+             0,
+             NULL,
+             0,
+             NX_SECURE_X509_KEY_TYPE_NONE)))
+    {
+        printf("Failed to initialize ROOT CA certificate!: error code = 0x%08x\r\n", status);
+        nx_azure_iot_delete(&context->nx_azure_iot);
+        return status;
+    }
+    
+    // Initialize IoTHub client.
+    if ((status = nx_azure_iot_hub_client_initialize(&context->iothub_client,
+             &context->nx_azure_iot,
+             (UCHAR*)iot_hub_hostname,
+             strlen(iot_hub_hostname),
+             (UCHAR*)iot_device_id,
+             strlen(iot_device_id),
+             (UCHAR*)MODULE_ID,
+             strlen(MODULE_ID),
+             _nx_azure_iot_tls_supported_crypto,
+             _nx_azure_iot_tls_supported_crypto_size,
+             _nx_azure_iot_tls_ciphersuite_map,
+             _nx_azure_iot_tls_ciphersuite_map_size,
+             (UCHAR*)context->nx_azure_iot_tls_metadata_buffer,
+             sizeof(context->nx_azure_iot_tls_metadata_buffer),
+             &context->root_ca_cert)))
+    {
+        printf("ERROR: on nx_azure_iot_hub_client_initialize (0x%08x)\r\n", status);
+        return status;
+    }
+
+    /* Initialize the device certificate.  */
+    printf("----- INITIALIZE DEVICE CERTIFICATE -----\n");
+    if ((status = nx_secure_x509_certificate_initialize(device_certificate_ptr, (UCHAR*)device_cert, (USHORT)x509_cert_len, NX_NULL, 0,
+                                                        (UCHAR*)private_key, (USHORT)x509_key_len, NX_SECURE_X509_KEY_TYPE_RSA_PKCS1_DER)))
+    {
+        printf("Failed on nx_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+        // return status;
+    }
+
+    /* Set device certificate.  */
+    else if ((status = nx_azure_iot_hub_client_device_cert_set(&context->iothub_client, device_certificate_ptr)))
+    {
+        printf("Failed on nx_azure_iot_hub_client_device_cert_set!: error code = 0x%08x\r\n", status);
+    }
+
+    // Set Model id
+    else if ((status = nx_azure_iot_hub_client_model_id_set(
+                  &context->iothub_client, (UCHAR*)device_model_id, strlen(device_model_id))))
+    {
+        printf("ERROR: nx_azure_iot_hub_client_model_id_set (0x%08x)\r\n", status);
+    }
+
+    // Set connection status callback
+    else if ((status = nx_azure_iot_hub_client_connection_status_callback_set(
+                  &context->iothub_client, connection_status_callback)))
+    {
+        printf("ERROR: failed on connection_status_callback (0x%08x)\r\n", status);
+    }
+
+    // Enable direct methods
+    else if ((status = nx_azure_iot_hub_client_direct_method_enable(&context->iothub_client)))
+    {
+        printf("ERROR: direct method receive enable failed (0x%08x)\r\n", status);
+    }
+
+    // Enable device twin
+    else if ((status = nx_azure_iot_hub_client_device_twin_enable(&context->iothub_client)))
+    {
+        printf("ERROR: device twin enabled failed (0x%08x)\r\n", status);
+    }
+
+    // Set device twin callback
+    else if ((status = nx_azure_iot_hub_client_receive_callback_set(&context->iothub_client,
+                  NX_AZURE_IOT_HUB_DEVICE_TWIN_PROPERTIES,
+                  message_receive_callback_twin,
+                  (VOID*)context)))
+    {
+        printf("ERROR: device twin callback set (0x%08x)\r\n", status);
+    }
+
+    // Set direct method callback
+    else if ((status = nx_azure_iot_hub_client_receive_callback_set(&context->iothub_client,
+                  NX_AZURE_IOT_HUB_DIRECT_METHOD,
+                  message_receive_direct_method,
+                  (VOID*)context)))
+    {
+        printf("ERROR: device method callback set (0x%08x)\r\n", status);
+    }
+
+    // Set the writeable property callback
+    else if ((status = nx_azure_iot_hub_client_receive_callback_set(&context->iothub_client,
+                  NX_AZURE_IOT_HUB_DEVICE_TWIN_DESIRED_PROPERTIES,
+                  message_receive_callback_desire_property,
+                  (VOID*)context)))
+    {
+        printf("ERROR: device twin desired property callback set (0x%08x)\r\n", status);
+    }
+
+    if (status != NX_AZURE_IOT_SUCCESS)
+    {
+        nx_azure_iot_hub_client_deinitialize(&context->iothub_client);
+    }
+
+    return status;
+}
+
 static UINT azure_iot_nx_client_create_common(AZURE_IOT_NX_CONTEXT* context,
     CHAR* iot_hub_hostname,
     CHAR* iot_device_id,
@@ -559,6 +697,173 @@ UINT azure_iot_nx_client_dps_create(AZURE_IOT_NX_CONTEXT* context,
         context, context->azure_iot_hub_hostname, context->azure_iot_device_id, device_sas_key, device_model_id);
 }
 
+UINT azure_iot_nx_client_dps_x509_create(AZURE_IOT_NX_CONTEXT* context,
+    NX_IP* nx_ip,
+    NX_PACKET_POOL* nx_pool,
+    NX_DNS* nx_dns,
+    UINT (*unix_time_callback)(ULONG* unix_time),
+    CHAR* dps_endpoint,
+    CHAR* dps_id_scope,
+    CHAR* dps_registration_id,
+    UCHAR* device_cert,
+    UINT x509_cert_len,
+    UCHAR* private_key,
+    UINT x509_key_len,
+    CHAR* device_model_id)
+{
+    UINT status;
+    CHAR payload[200];
+    UINT iot_hub_hostname_len = AZURE_IOT_HOST_NAME_SIZE;
+    UINT iot_device_id_len    = AZURE_IOT_DEVICE_ID_SIZE;
+
+    printf("Initializing Azure IoT DPS client\r\n");
+    printf("\tDPS endpoint: %s\r\n", dps_endpoint);
+    printf("\tDPS ID scope: %s\r\n", dps_id_scope);
+    printf("\tRegistration ID: %s\r\n", dps_registration_id);
+
+    if (context == NULL)
+    {
+        printf("ERROR: context is NULL\r\n");
+        return NX_PTR_ERROR;
+    }
+
+    if (dps_endpoint[0] == 0 || dps_id_scope[0] == 0 || dps_registration_id[0] == 0 || device_cert[0] == 0 || private_key[0] == 0)
+    {
+        printf("ERROR: IoT DPS + Hub connection configuration is empty\r\n");
+        return NX_PTR_ERROR;
+    }
+
+    memset(context, 0, sizeof(AZURE_IOT_NX_CONTEXT));
+
+    if (snprintf(payload, sizeof(payload), DPS_PAYLOAD, device_model_id) > sizeof(payload) - 1)
+    {
+        printf("ERROR: insufficient buffer size to create DPS payload\r\n");
+        return NX_SIZE_ERROR;
+    }
+
+    // Create Azure IoT handler
+    if ((status = nx_azure_iot_create(&context->nx_azure_iot,
+             (UCHAR*)"Azure IoT",
+             nx_ip,
+             nx_pool,
+             nx_dns,
+             context->nx_azure_iot_thread_stack,
+             sizeof(context->nx_azure_iot_thread_stack),
+             NX_AZURE_IOT_THREAD_PRIORITY,
+             unix_time_callback)))
+    {
+        printf("ERROR: failed on nx_azure_iot_create (0x%08x)\r\n", status);
+        return status;
+    }
+
+    // Initialize CA certificate.
+    printf("----- INITIALIZE ROOT CA CERTIFICATE -----\n");
+    if ((status = nx_secure_x509_certificate_initialize(&context->root_ca_cert,
+             (UCHAR*)azure_iot_root_ca,
+             (USHORT)azure_iot_root_ca_len,
+             NX_NULL,
+             0,
+             NULL,
+             0,
+             NX_SECURE_X509_KEY_TYPE_NONE)))
+    {
+        printf("Failed to initialize ROOT CA certificate!: error code = 0x%08x\r\n", status);
+        nx_azure_iot_delete(&context->nx_azure_iot);
+        return status;
+    }
+
+    /* Initialize the device certificate.  */
+    printf("----- INITIALIZE DEVICE CERTIFICATE -----\n");
+    if ((status = nx_secure_x509_certificate_initialize(&device_certificate, (UCHAR*)device_cert, (USHORT)x509_cert_len, NX_NULL, 0,
+                                                        (UCHAR*)private_key, (USHORT)x509_key_len, NX_SECURE_X509_KEY_TYPE_RSA_PKCS1_DER)))
+    {
+        printf("Failed on nx_secure_x509_certificate_initialize!: error code = 0x%08x\r\n", status);
+        return status;
+    }
+
+    // Initialize IoT provisioning client
+    printf("----- INITIALIZE PROVISIONING CLIENT -----\n");
+    if ((status = nx_azure_iot_provisioning_client_initialize(&context->prov_client,
+             &context->nx_azure_iot,
+             (UCHAR*)dps_endpoint,
+             strlen(dps_endpoint),
+             (UCHAR*)dps_id_scope,
+             strlen(dps_id_scope),
+             (UCHAR*)dps_registration_id,
+             strlen(dps_registration_id),
+             _nx_azure_iot_tls_supported_crypto,
+             _nx_azure_iot_tls_supported_crypto_size,
+             _nx_azure_iot_tls_ciphersuite_map,
+             _nx_azure_iot_tls_ciphersuite_map_size,
+             (UCHAR*)context->nx_azure_iot_tls_metadata_buffer,
+             sizeof(context->nx_azure_iot_tls_metadata_buffer),
+             &context->root_ca_cert)))
+    {
+        printf("Failed on nx_azure_iot_provisioning_client_initialize (0x%08x)\r\n", status);
+        return status;
+    }
+
+    /* Set device certificate.  */
+    printf("----- SET PROVISIONING CLIENT CERT -----\n");
+    if ((status = nx_azure_iot_provisioning_client_device_cert_set(&context->prov_client, &device_certificate)))
+    {
+        printf("Failed on nx_azure_iot_provisioning_client_device_cert_set!: error code = 0x%08x\r\n", status);
+        return status;
+    }
+
+    // Set the payload containing the model Id
+    printf("----- SET PROVISIONING CLIENT PAYLOAD -----\n");
+    if ((status = nx_azure_iot_provisioning_client_registration_payload_set(
+                  &context->prov_client, (UCHAR*)payload, strlen(payload))))
+    {
+        printf("Error: nx_azure_iot_provisioning_client_registration_payload_set (0x%08x\r\n", status);
+        return status;
+    }
+
+    // Register device
+    printf("----- REGISTER PROVISIONING CLIENT -----\n");
+    if ((status = nx_azure_iot_provisioning_client_register(&context->prov_client, NX_WAIT_FOREVER)))
+    {
+        printf("ERROR: nx_azure_iot_provisioning_client_register (0x%08x)\r\n", status);
+        return status;
+    }
+
+    // Get Device info
+    printf("----- SUCCESS: DEVICE PROVISIONED -----\n");
+    printf("----- GET IOTHUB DEVICE INFO -----\n");
+    if ((status = nx_azure_iot_provisioning_client_iothub_device_info_get(&context->prov_client,
+                  (UCHAR*)context->azure_iot_hub_hostname,
+                  &iot_hub_hostname_len,
+                  (UCHAR*)context->azure_iot_device_id,
+                  &iot_device_id_len)))
+    {
+        printf("ERROR: nx_azure_iot_provisioning_client_iothub_device_info_get (0x%08x)\r\n", status);
+        return status;
+    }
+    
+    printf("----- IOTHUB DEVICE INFO ACQUIRED -----\n");
+    printf("iot_hub_hostname = %s\n", context->azure_iot_hub_hostname);
+    printf("iot_device_id = %s\n", context->azure_iot_device_id);
+
+    // Destroy Provisioning Client
+    nx_azure_iot_provisioning_client_deinitialize(&context->prov_client);
+
+    if (status != NX_SUCCESS) {
+      return status;
+    }
+
+    // Null terminate returned values
+    context->azure_iot_hub_hostname[iot_hub_hostname_len] = 0;
+    context->azure_iot_device_id[iot_device_id_len] = 0;
+
+    printf("SUCCESS: Azure IoT DPS client initialized\r\n\r\n");
+
+    return azure_iot_nx_client_x509_create_common(
+        context, context->azure_iot_hub_hostname, context->azure_iot_device_id, device_model_id,
+        device_cert, x509_cert_len, private_key, x509_key_len,
+        &device_certificate);
+}
+
 UINT azure_iot_nx_client_delete(AZURE_IOT_NX_CONTEXT* context)
 {
     /* Destroy IoTHub Client. */
@@ -572,14 +877,13 @@ UINT azure_iot_nx_client_delete(AZURE_IOT_NX_CONTEXT* context)
 UINT azure_iot_nx_client_connect(AZURE_IOT_NX_CONTEXT* context)
 {
     UINT status;
-
     // Connect to IoTHub client
     if ((status = nx_azure_iot_hub_client_connect(&context->iothub_client, NX_TRUE, NX_WAIT_FOREVER)))
     {
         printf("Failed on nx_azure_iot_hub_client_connect (0x%08x)\r\n", status);
         return status;
     }
-
+    printf("Time to create connection thread\r\n");
     if ((status = tx_thread_create(&context->azure_iot_thread,
              "Nx Thread",
              event_thread,
@@ -613,10 +917,7 @@ UINT azure_iot_nx_client_publish_float_telemetry(AZURE_IOT_NX_CONTEXT* context, 
     CHAR buffer[30];
     NX_PACKET* packet_ptr;
 
-    int intvalue = value;
-    int fracvalue = abs(100 * (value - (long)value));
-
-    if (snprintf(buffer, sizeof(buffer), "{\"%s\":%d.%2d}", key, intvalue, fracvalue) > sizeof(buffer) - 1)
+    if (snprintf(buffer, sizeof(buffer), "{\"%s\":%0.2f}", key, value) > sizeof(buffer) - 1)
     {
         printf("ERROR: insufficient buffer size to publish float telemetry\r\n");
         return NX_SIZE_ERROR;
@@ -651,10 +952,7 @@ UINT azure_iot_nx_client_publish_float_property(AZURE_IOT_NX_CONTEXT* context, C
     ULONG version;
     CHAR buffer[30];
 
-    int intvalue = value;
-    int fracvalue = abs(100 * (value - (long)value));
-
-    if (snprintf(buffer, sizeof(buffer), "{\"%s\":%d.%2d}", key, intvalue, fracvalue) > sizeof(buffer) - 1)
+    if (snprintf(buffer, sizeof(buffer), "{\"%s\":%0.2f}", key, value) > sizeof(buffer) - 1)
     {
         printf("ERROR: insufficient buffer size to publish float property\r\n");
         return NX_SIZE_ERROR;
