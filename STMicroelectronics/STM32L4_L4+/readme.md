@@ -7,6 +7,8 @@ products:
 - azure-iot
 - azure-iot-pnp
 - azure-rtos
+- azure-iot-dps
+- azure-iot-hub
 ---
 
 # Getting started with the STMicroelectronics B-L475E-IOT01A / B-L4S5I-IOTOA1 Discovery kits
@@ -148,8 +150,8 @@ To connect the STM DevKit to Azure, you'll modify a configuration file for Wi-Fi
     |Constant name|Value|
     |-------------|-----|
     |`IOT_HUB_HOSTNAME` |{*Your Iot hub hostName value*}|
-    |`IOT_DEVICE_ID` |{*Your deviceID value*}|
-    |`IOT_PRIMARY_KEY` |{*Your primaryKey value*}|
+    |`IOT_HUB_DEVICE_ID` |{*Your deviceID value*}|
+    |`IOT_DEVICE_SAS_KEY` |{*Your primaryKey value*}|
 
 1. Save and close the file.
 

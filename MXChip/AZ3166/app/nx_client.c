@@ -56,115 +56,6 @@ static TX_EVENT_FLAGS_GROUP azure_iot_flags;
 
 static int32_t telemetry_interval = 10;
 
-static void set_led_state(bool level)
-{
-    if (level)
-    {
-        printf("LED is turned ON\r\n");
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-    }
-    else
-    {
-        printf("LED is turned OFF\r\n");
-        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-    }
-}
-
-static void direct_method_cb(AZURE_IOT_NX_CONTEXT* nx_context,
-    const UCHAR* method,
-    USHORT method_length,
-    UCHAR* payload,
-    USHORT payload_length,
-    VOID* context,
-    USHORT context_length)
-{
-    UINT status;
-    UINT http_status    = 501;
-    CHAR* http_response = "{}";
-
-    if (strncmp((CHAR*)method, SET_LED_STATE_COMMAND, method_length) == 0)
-    {
-        bool arg = (strncmp((CHAR*)payload, "true", payload_length) == 0);
-        set_led_state(arg);
-
-        azure_iot_nx_client_publish_bool_property(&azure_iot_nx_client, LED_STATE_PROPERTY, arg);
-
-        http_status = 200;
-    }
-
-    else if (strncmp((CHAR*)method, SET_DISPLAY_TEXT_COMMAND, method_length) == 0)
-    {
-        // drop the first and last character to remove the quotes
-        screen_printn((CHAR*)payload + 1, payload_length - 2, L0);
-
-        http_status = 200;
-    }
-
-    if ((status = nx_azure_iot_hub_client_direct_method_message_response(&nx_context->iothub_client,
-             http_status,
-             context,
-             context_length,
-             (UCHAR*)http_response,
-             strlen(http_response),
-             NX_WAIT_FOREVER)))
-    {
-        printf("Direct method response failed! (0x%08x)\r\n", status);
-        return;
-    }
-}
-
-static void device_twin_desired_property_cb(UCHAR* component_name,
-    UINT component_name_len,
-    UCHAR* property_name,
-    UINT property_name_len,
-    NX_AZURE_IOT_JSON_READER property_value_reader,
-    UINT version,
-    VOID* userContextCallback)
-{
-    UINT status;
-    AZURE_IOT_NX_CONTEXT* nx_context = (AZURE_IOT_NX_CONTEXT*)userContextCallback;
-
-    if (strncmp((CHAR*)property_name, TELEMETRY_INTERVAL_PROPERTY, property_name_len) == 0)
-    {
-        status = nx_azure_iot_json_reader_token_int32_get(&property_value_reader, &telemetry_interval);
-        if (status == NX_AZURE_IOT_SUCCESS)
-        {
-            // Set a telemetry event so we pick up the change immediately
-            tx_event_flags_set(&azure_iot_flags, TELEMETRY_INTERVAL_EVENT, TX_OR);
-
-            // Confirm reception back to hub
-            azure_nx_client_respond_int_writeable_property(
-                nx_context, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval, 200, version);
-        }
-    }
-}
-
-static void device_twin_property_cb(UCHAR* component_name,
-    UINT component_name_len,
-    UCHAR* property_name,
-    UINT property_name_len,
-    NX_AZURE_IOT_JSON_READER property_value_reader,
-    UINT version,
-    VOID* userContextCallback)
-{
-    UINT status;
-    AZURE_IOT_NX_CONTEXT* nx_context = (AZURE_IOT_NX_CONTEXT*)userContextCallback;
-
-    if (strncmp((CHAR*)property_name, TELEMETRY_INTERVAL_PROPERTY, property_name_len) == 0)
-    {
-        status = nx_azure_iot_json_reader_token_int32_get(&property_value_reader, &telemetry_interval);
-        if (status == NX_AZURE_IOT_SUCCESS)
-        {
-            // Set a telemetry event so we pick up the change immediately
-            tx_event_flags_set(&azure_iot_flags, TELEMETRY_INTERVAL_EVENT, TX_OR);
-        }
-    }
-
-    // Confirm reception back to hub
-    azure_nx_client_respond_int_writeable_property(
-        nx_context, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval, 200, version);
-}
-
 static UINT append_device_info_properties(NX_AZURE_IOT_JSON_WRITER* json_writer, VOID* context)
 {
     if (nx_azure_iot_json_writer_append_property_with_string_value(json_writer,
@@ -276,8 +167,8 @@ static UINT append_device_telemetry_accelerometer(NX_AZURE_IOT_JSON_WRITER* json
             lsm6dsl_data.acceleration_mg[1],
             2) ||
         nx_azure_iot_json_writer_append_property_with_double_value(json_writer,
-            (UCHAR*)TELEMETRY_ACCELEROMETERY,
-            sizeof(TELEMETRY_ACCELEROMETERY) - 1,
+            (UCHAR*)TELEMETRY_ACCELEROMETERZ,
+            sizeof(TELEMETRY_ACCELEROMETERZ) - 1,
             lsm6dsl_data.acceleration_mg[2],
             2))
     {
@@ -295,21 +186,13 @@ static UINT append_device_telemetry_gyroscope(NX_AZURE_IOT_JSON_WRITER* json_wri
             (UCHAR*)TELEMETRY_GYROSCOPEX,
             sizeof(TELEMETRY_GYROSCOPEX) - 1,
             lsm6dsl_data.angular_rate_mdps[0],
-            2))
-    {
-        return NX_NOT_SUCCESSFUL;
-    }
-
-    if (nx_azure_iot_json_writer_append_property_with_double_value(json_writer,
+            2) ||
+        nx_azure_iot_json_writer_append_property_with_double_value(json_writer,
             (UCHAR*)TELEMETRY_GYROSCOPEY,
             sizeof(TELEMETRY_GYROSCOPEY) - 1,
             lsm6dsl_data.angular_rate_mdps[1],
-            2))
-    {
-        return NX_NOT_SUCCESSFUL;
-    }
-
-    if (nx_azure_iot_json_writer_append_property_with_double_value(json_writer,
+            2) ||
+        nx_azure_iot_json_writer_append_property_with_double_value(json_writer,
             (UCHAR*)TELEMETRY_GYROSCOPEZ,
             sizeof(TELEMETRY_GYROSCOPEZ) - 1,
             lsm6dsl_data.angular_rate_mdps[2],
@@ -321,6 +204,111 @@ static UINT append_device_telemetry_gyroscope(NX_AZURE_IOT_JSON_WRITER* json_wri
     return NX_AZURE_IOT_SUCCESS;
 }
 
+static void set_led_state(bool level)
+{
+    if (level)
+    {
+        printf("LED is turned ON\r\n");
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
+    }
+    else
+    {
+        printf("LED is turned OFF\r\n");
+        HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
+    }
+}
+
+static void direct_method_cb(AZURE_IOT_NX_CONTEXT* nx_context,
+    const UCHAR* method,
+    USHORT method_length,
+    UCHAR* payload,
+    USHORT payload_length,
+    VOID* context,
+    USHORT context_length)
+{
+    UINT status;
+    UINT http_status    = 501;
+    CHAR* http_response = "{}";
+
+    if (strncmp((CHAR*)method, SET_LED_STATE_COMMAND, method_length) == 0)
+    {
+        bool arg = (strncmp((CHAR*)payload, "true", payload_length) == 0);
+        set_led_state(arg);
+
+        azure_iot_nx_client_publish_bool_property(&azure_iot_nx_client, LED_STATE_PROPERTY, arg);
+
+        http_status = 200;
+    }
+
+    else if (strncmp((CHAR*)method, SET_DISPLAY_TEXT_COMMAND, method_length) == 0)
+    {
+        // drop the first and last character to remove the quotes
+        screen_printn((CHAR*)payload + 1, payload_length - 2, L0);
+
+        http_status = 200;
+    }
+
+    if ((status = nx_azure_iot_hub_client_direct_method_message_response(&nx_context->iothub_client,
+             http_status,
+             context,
+             context_length,
+             (UCHAR*)http_response,
+             strlen(http_response),
+             NX_WAIT_FOREVER)))
+    {
+        printf("Direct method response failed! (0x%08x)\r\n", status);
+        return;
+    }
+}
+
+static void device_twin_desired_property_cb(UCHAR* component_name,
+    UINT component_name_len,
+    UCHAR* property_name,
+    UINT property_name_len,
+    NX_AZURE_IOT_JSON_READER property_value_reader,
+    UINT version,
+    VOID* userContextCallback)
+{
+    UINT status;
+    AZURE_IOT_NX_CONTEXT* nx_context = (AZURE_IOT_NX_CONTEXT*)userContextCallback;
+
+    if (strncmp((CHAR*)property_name, TELEMETRY_INTERVAL_PROPERTY, property_name_len) == 0)
+    {
+        status = nx_azure_iot_json_reader_token_int32_get(&property_value_reader, &telemetry_interval);
+        if (status == NX_AZURE_IOT_SUCCESS)
+        {
+            // Confirm reception back to hub
+            azure_nx_client_respond_int_writeable_property(
+                nx_context, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval, 200, version);
+
+            // Set a telemetry event so we pick up the change immediately
+            tx_event_flags_set(&azure_iot_flags, TELEMETRY_INTERVAL_EVENT, TX_OR);
+        }
+    }
+}
+
+static void device_twin_property_cb(UCHAR* component_name,
+    UINT component_name_len,
+    UCHAR* property_name,
+    UINT property_name_len,
+    NX_AZURE_IOT_JSON_READER property_value_reader,
+    UINT version,
+    VOID* userContextCallback)
+{
+    if (strncmp((CHAR*)property_name, TELEMETRY_INTERVAL_PROPERTY, property_name_len) == 0)
+    {
+        nx_azure_iot_json_reader_token_int32_get(&property_value_reader, &telemetry_interval);
+    }
+}
+
+static void device_twin_received_cb(AZURE_IOT_NX_CONTEXT* nx_context)
+{
+    azure_iot_nx_client_publish_int_writeable_property(nx_context, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval);
+    azure_iot_nx_client_publish_bool_property(&azure_iot_nx_client, LED_STATE_PROPERTY, false);
+    azure_iot_nx_client_publish_properties(
+        &azure_iot_nx_client, DEVICE_INFO_COMPONENT_NAME, append_device_info_properties);
+}
+
 UINT azure_iot_nx_client_entry(
     NX_IP* ip_ptr, NX_PACKET_POOL* pool_ptr, NX_DNS* dns_ptr, UINT (*unix_time_callback)(ULONG* unix_time))
 {
@@ -330,76 +318,41 @@ UINT azure_iot_nx_client_entry(
 
     if ((status = tx_event_flags_create(&azure_iot_flags, "Azure IoT flags")))
     {
-        printf("FAIL: Unable to create nx_client event flags (0x%04x)\r\n", status);
+        printf("FAIL: Unable to create nx_client event flags (0x%08x)\r\n", status);
+        return status;
+    }
+
+    status =
+        azure_iot_nx_client_create(&azure_iot_nx_client, ip_ptr, pool_ptr, dns_ptr, unix_time_callback, IOT_MODEL_ID);
+    if (status != NX_SUCCESS)
+    {
+        printf("ERROR: azure_iot_nx_client_create failed (0x%08x)\r\n", status);
+        return status;
+    }
+
+#ifdef ENABLE_X509
+    status = azure_iot_nx_client_cert_set(&azure_iot_nx_client,
+        (UCHAR*)iot_x509_device_cert,
+        iot_x509_device_cert_len,
+        (UCHAR*)iot_x509_private_key,
+        iot_x509_private_key_len);
+#else
+    status = azure_iot_nx_client_sas_set(&azure_iot_nx_client, IOT_DEVICE_SAS_KEY);
+#endif
+    if (status != NX_SUCCESS)
+    {
+        printf("ERROR: azure_iot_nx_client_[sas|cert]_set failed (0x%08x)\r\n", status);
         return status;
     }
 
 #ifdef ENABLE_DPS
-#   ifdef ENABLE_X509
-    status = azure_iot_nx_client_dps_create(&azure_iot_nx_client,
-        ip_ptr,
-        pool_ptr,
-        dns_ptr,
-        unix_time_callback,
-        IOT_DPS_ENDPOINT,
-        IOT_DPS_ID_SCOPE,
-        IOT_DPS_REGISTRATION_ID,
-        "",
-        (UCHAR*)iot_x509_device_cert,
-        iot_x509_device_cert_len,
-        (UCHAR*)iot_x509_private_key,
-        iot_x509_private_key_len,
-        IOT_MODEL_ID);
-#   else
-    status = azure_iot_nx_client_dps_create(&azure_iot_nx_client,
-        ip_ptr,
-        pool_ptr,
-        dns_ptr,
-        unix_time_callback,
-        IOT_DPS_ENDPOINT,
-        IOT_DPS_ID_SCOPE,
-        IOT_DPS_REGISTRATION_ID,
-        IOT_PRIMARY_KEY,
-        NULL,
-        0,
-        NULL,
-        0,
-        IOT_MODEL_ID);
-#   endif
+    azure_iot_nx_client_dps_create(&azure_iot_nx_client, IOT_DPS_ID_SCOPE, IOT_DPS_REGISTRATION_ID);
 #else
-#   ifdef ENABLE_X509
-    status = azure_iot_nx_client_create(&azure_iot_nx_client,
-        ip_ptr,
-        pool_ptr,
-        dns_ptr,
-        unix_time_callback,
-        IOT_HUB_HOSTNAME,
-        IOT_DEVICE_ID,
-        "",
-        (UCHAR*)iot_x509_device_cert,
-        iot_x509_device_cert_len,
-        (UCHAR*)iot_x509_private_key,
-        iot_x509_private_key_len,
-        IOT_MODEL_ID);
-#   else
-    status = azure_iot_nx_client_create(&azure_iot_nx_client,
-        ip_ptr,
-        pool_ptr,
-        dns_ptr,
-        unix_time_callback,
-        IOT_HUB_HOSTNAME,
-        IOT_DEVICE_ID,
-        IOT_PRIMARY_KEY,
-        NULL,
-        0,
-        NULL,
-        0,
-        IOT_MODEL_ID);
-#   endif
+    azure_iot_nx_client_hub_create(&azure_iot_nx_client, IOT_HUB_HOSTNAME, IOT_HUB_DEVICE_ID);
 #endif
     if (status != NX_SUCCESS)
     {
-        printf("ERROR: failed to create iot client 0x%04x\r\n", status);
+        printf("ERROR: azure_iot_nx_client_[hub|dps]_create failed (0x%08x)\r\n", status);
         return status;
     }
 
@@ -407,6 +360,7 @@ UINT azure_iot_nx_client_entry(
     azure_iot_nx_client_register_direct_method(&azure_iot_nx_client, direct_method_cb);
     azure_iot_nx_client_register_device_twin_desired_prop(&azure_iot_nx_client, device_twin_desired_property_cb);
     azure_iot_nx_client_register_device_twin_prop(&azure_iot_nx_client, device_twin_property_cb);
+    azure_iot_nx_client_register_device_twin_received(&azure_iot_nx_client, device_twin_received_cb);
 
     if ((status = azure_iot_nx_client_connect(&azure_iot_nx_client)))
     {
@@ -422,13 +376,9 @@ UINT azure_iot_nx_client_entry(
         return status;
     }
 
-    // Send properties
-    azure_iot_nx_client_publish_bool_property(&azure_iot_nx_client, LED_STATE_PROPERTY, false);
-    azure_iot_nx_client_publish_properties(
-        &azure_iot_nx_client, DEVICE_INFO_COMPONENT_NAME, append_device_info_properties);
-
     printf("\r\nStarting Main loop\r\n");
     screen_print("Azure IoT", L0);
+
     while (true)
     {
         tx_event_flags_get(

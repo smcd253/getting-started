@@ -84,8 +84,7 @@ static void mqtt_device_twin_desired_prop(AZURE_IOT_MQTT* iot_mqtt, CHAR* messag
         tx_event_flags_set(&azure_iot_flags, TELEMETRY_INTERVAL_EVENT, TX_OR);
 
         // Confirm reception back to hub
-        azure_iot_mqtt_respond_int_writeable_property(
-            iot_mqtt, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval, 200);
+        azure_iot_mqtt_respond_int_writeable_property(iot_mqtt, TELEMETRY_INTERVAL_PROPERTY, telemetry_interval, 200);
     }
 }
 
@@ -127,10 +126,9 @@ UINT azure_iot_mqtt_entry(NX_IP* ip_ptr, NX_PACKET_POOL* pool_ptr, NX_DNS* dns_p
         pool_ptr,
         dns_ptr,
         time_get,
-        IOT_DPS_ENDPOINT,
         IOT_DPS_ID_SCOPE,
         IOT_DPS_REGISTRATION_ID,
-        IOT_PRIMARY_KEY,
+        IOT_DEVICE_SAS_KEY,
         IOT_MODEL_ID);
 #else
     // Create Azure MQTT for Hub
@@ -140,8 +138,8 @@ UINT azure_iot_mqtt_entry(NX_IP* ip_ptr, NX_PACKET_POOL* pool_ptr, NX_DNS* dns_p
         dns_ptr,
         time_get,
         IOT_HUB_HOSTNAME,
-        IOT_DEVICE_ID,
-        IOT_PRIMARY_KEY,
+        IOT_HUB_DEVICE_ID,
+        IOT_DEVICE_SAS_KEY,
         IOT_MODEL_ID);
 #endif
 
