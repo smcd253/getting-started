@@ -1,6 +1,6 @@
 # Using Azure RTOS in the Getting started guide
 
-The getting started guide in this repository uses Microsoft Azure RTOS for general operations and for connecting to [Azure IoT Hub](https://azure.microsoft.com/en-us/services/iot-hub). This article explains how the sample code implements Azure RTOS components for devices.
+The getting started guide in this repository uses Microsoft Azure RTOS for general operations and for connecting to [Azure IoT Hub](https://azure.microsoft.com/services/iot-hub). This article explains how the sample code implements Azure RTOS components for devices.
 
 The sample code in the getting started guide uses the following Azure RTOS components:
 
@@ -53,7 +53,7 @@ The getting started guide repository is arranged in the following folder and fil
 
 ### Toolchain
 
-The *cmake* folder contains the build toolchain files for the project. It contains both a [Cortex-M4](../cmake/arm-gcc-cortex-m4.cmake) and a [Cortex-M7](../cmake/arm-gcc-cortex-m7.cmake) variant which enable the specific Gcc flags for building on the architecture. There is also a base level [arm-gcc-toolchain.cmake](../cmake/arm-gcc-toolchain.cmake) file that defines the specific build tools (arm-none-eabi-*), along with a set of compile and linker flags to optimize the build.
+The *cmake* folder contains the build toolchain files for the project. It contains both a [Cortex-M4](../cmake/arm-gcc-cortex-m4.cmake) and a [Cortex-M7](../cmake/arm-gcc-cortex-m7.cmake) variant which enable the specific Gcc flags for building on the architecture. There is also a base level [arm-gcc-cortex-0toolchain.cmake](../cmake/arm-gcc-cortex-toolchain.cmake) file that defines the specific build tools (arm-none-eabi-*), along with a set of compile and linker flags to optimize the build.
 
 ### Building
 
