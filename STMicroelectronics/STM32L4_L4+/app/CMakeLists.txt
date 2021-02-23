@@ -13,6 +13,23 @@ set(SOURCES
     main.c
     nx_client.c
     stm_networking.c
+
+    # ipc sample
+    ipc/ulib_sample.h
+    ipc/ulib_sample.c
+    ipc/common/cipher_1_interface.h
+    ipc/consumers/my_consumer.h
+    ipc/consumers/my_consumer.c
+    ipc/consumers/wrappers/cipher_1_wrapper.h
+    ipc/producers/cipher_v1i1/cipher_v1i1.h
+    ipc/producers/cipher_v1i1/cipher_v1i1.c
+    ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.h
+    ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.c
+    ipc/producers/cipher_v2i1/cipher_v2i1.h
+    ipc/producers/cipher_v2i1/cipher_v2i1.c
+    ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.h
+    ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.c
+
 )
 
 function(create_target TARGET STARTUP LINKER)
@@ -29,6 +46,8 @@ function(create_target TARGET STARTUP LINKER)
         netx_driver
         app_common
         jsmn
+
+        ${azure_ulib_c}
     )
 
     target_link_options(${TARGET}
@@ -45,6 +64,7 @@ function(create_target TARGET STARTUP LINKER)
     target_include_directories(${TARGET} 
         PUBLIC 
             .
+            ipc/*
     )
 
     create_bin_output(${TARGET})

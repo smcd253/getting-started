@@ -1,4 +1,7 @@
 {
     "cmake.configureOnOpen": false,
-    "git.ignoreLimitWarning": true
+    "git.ignoreLimitWarning": true,
+    "files.associations": {
+        "tx_api.h": "c"
+    }
 }

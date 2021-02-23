@@ -2,6 +2,9 @@
 # Licensed under the MIT License.
 
 cmake_minimum_required(VERSION 3.13 FATAL_ERROR)
+
+set(CMAKE_VERBOSE_MAKEFILE on)
+
 set(CMAKE_C_STANDARD 99)
 
 set(GSG_BASE_DIR ${CMAKE_SOURCE_DIR}/../..)
@@ -27,5 +30,8 @@ project(stm32l4_azure_iot C ASM)
 set(DISABLE_COMMON_NETWORK true)
 
 add_subdirectory(${CORE_SRC_DIR} core_src)
+
 add_subdirectory(lib)
 add_subdirectory(app)
+
+add_subdirectory(${CORE_LIB_DIR}/azure-ulib-c azure_ulib_c)
