@@ -26,7 +26,7 @@ static void get_handle_if_need(void)
     }
     else
     {
-      (void)printf("Get cypher.1 interface failed with code %d\r\n", result);
+      (void)printf("Get cypher.1 interface failed with code %ld\r\n", result);
     }
   }
 }
@@ -66,21 +66,21 @@ void my_consumer_do_cipher(uint32_t context)
 
       AZ_ULIB_THROW_IF_AZ_ERROR(cipher_1_encrypt(
           _cipher_1, context, src, src_size, BUFFER_SIZE, encrypted_dst, &encrypted_dst_size));
-      (void)printf("cipher.1 encrypted \"%s\" with context %d.\"\r\n", src, context);
+      (void)printf("cipher.1 encrypted \"%s\" with context %ld.\"\r\n", src, context);
 
       AZ_ULIB_THROW_IF_AZ_ERROR(cipher_1_decrypt(
           _cipher_1, encrypted_dst, encrypted_dst_size, BUFFER_SIZE, dst, &dst_size));
       dst[dst_size] = '\0';
-      (void)printf("cipher.1 decrypted \"%s\" with context %d.\r\n", dst, context);
+      (void)printf("cipher.1 decrypted \"%s\" with context %ld.\r\n", dst, context);
     }
     AZ_ULIB_CATCH(...)
     {
       if (AZ_ULIB_TRY_RESULT == AZ_ERROR_ITEM_NOT_FOUND)
         (void)printf("cipher.1 was uninstalled.\r\n");
       else if (AZ_ULIB_TRY_RESULT == AZ_ERROR_NOT_SUPPORTED)
-        (void)printf("cipher.1 does not support context %d.\r\n", context);
+        (void)printf("cipher.1 does not support context %ld.\r\n", context);
       else
-        (void)printf("cipher.1.sum failed with error %d\r\n", AZ_ULIB_TRY_RESULT);
+        (void)printf("cipher.1.sum failed with error %ld\r\n", AZ_ULIB_TRY_RESULT);
 
       (void)printf("Release the handle.\r\n");
       cipher_1_destroy(_cipher_1);

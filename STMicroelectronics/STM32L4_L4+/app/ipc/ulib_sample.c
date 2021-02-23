@@ -21,7 +21,7 @@ UINT ulib_entry_point(void)
    */
   if ((result = az_ulib_ipc_init(&ipc_handle)) != AZ_OK)
   {
-    (void)printf("Initialize IPC failed with code %d.\r\n", result);
+    (void)printf("Initialize IPC failed with code %ld.\r\n", result);
   }
   else
   {

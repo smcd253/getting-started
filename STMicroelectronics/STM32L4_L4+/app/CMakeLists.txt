@@ -17,18 +17,18 @@ set(SOURCES
     # ipc sample
     ipc/ulib_sample.h
     ipc/ulib_sample.c
-    ipc/common/cipher_1_interface.h
-    ipc/consumers/my_consumer.h
-    ipc/consumers/my_consumer.c
-    ipc/consumers/wrappers/cipher_1_wrapper.h
-    ipc/producers/cipher_v1i1/cipher_v1i1.h
-    ipc/producers/cipher_v1i1/cipher_v1i1.c
-    ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.h
-    ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.c
-    ipc/producers/cipher_v2i1/cipher_v2i1.h
-    ipc/producers/cipher_v2i1/cipher_v2i1.c
-    ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.h
-    ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.c
+    # ipc/common/cipher_1_interface.h
+    # ipc/consumers/my_consumer.h
+    # ipc/consumers/my_consumer.c
+    # ipc/consumers/wrappers/cipher_1_wrapper.h
+    # ipc/producers/cipher_v1i1/cipher_v1i1.h
+    # ipc/producers/cipher_v1i1/cipher_v1i1.c
+    # ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.h
+    # ipc/producers/cipher_v1i1/interfaces/cipher_v1i1_interface.c
+    # ipc/producers/cipher_v2i1/cipher_v2i1.h
+    # ipc/producers/cipher_v2i1/cipher_v2i1.c
+    # ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.h
+    # ipc/producers/cipher_v2i1/interfaces/cipher_v2i1_interface.c
 
 )
 
@@ -47,7 +47,7 @@ function(create_target TARGET STARTUP LINKER)
         app_common
         jsmn
 
-        ${azure_ulib_c}
+        azure_ulib_c
     )
 
     target_link_options(${TARGET}
@@ -63,8 +63,16 @@ function(create_target TARGET STARTUP LINKER)
 
     target_include_directories(${TARGET} 
         PUBLIC 
-            .
-            ipc/*
+            ${PROJECT_SOURCE_DIR}/app
+            ${PROJECT_SOURCE_DIR}/app/ipc
+            ${PROJECT_SOURCE_DIR}/app/ipc/common
+            ${PROJECT_SOURCE_DIR}/app/ipc/consumers
+            ${PROJECT_SOURCE_DIR}/app/ipc/wrappers
+            ${PROJECT_SOURCE_DIR}/app/ipc/producers
+            ${PROJECT_SOURCE_DIR}/app/ipc/producers/cipher_v1i1
+            ${PROJECT_SOURCE_DIR}/app/ipc/producers/cipher_v1i1/interfaces
+            ${PROJECT_SOURCE_DIR}/app/ipc/producers/cipher_v2i1
+            ${PROJECT_SOURCE_DIR}/app/ipc/producers/cipher_v2i1/interfaces
     )
 
     create_bin_output(${TARGET})

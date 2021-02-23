@@ -4,5 +4,5 @@
 #include "cipher_v2i1.h"
 #include "my_consumer.h"
 #include <stdio.h>
-
+typedef unsigned int                              UINT;
 UINT ulib_entry_point(void);

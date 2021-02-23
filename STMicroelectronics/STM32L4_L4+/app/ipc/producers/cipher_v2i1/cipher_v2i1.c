@@ -19,7 +19,7 @@ void cipher_v2i1_create(void)
 
   if ((result = publish_cipher_v2i1_interface()) != AZ_OK)
   {
-    (void)printf("Publish interface cipher 1 failed with error %d\r\n", result);
+    (void)printf("Publish interface cipher 1 failed with error %ld\r\n", result);
   }
   else
   {
@@ -78,7 +78,7 @@ az_result cipher_v2i1_decrypt(
     AZ_ULIB_THROW_IF_ERROR((src_size > 1), AZ_ERROR_ARG);
     uint32_t context = src[0] - '0';
     AZ_ULIB_THROW_IF_ERROR((context < NUMBER_OF_KEYS), AZ_ERROR_NOT_SUPPORTED);
-    AZ_ULIB_THROW_IF_ERROR((context >= 0), AZ_ERROR_ARG);
+    // AZ_ULIB_THROW_IF_ERROR((context >= 0), AZ_ERROR_ARG);
     AZ_ULIB_THROW_IF_ERROR((src_size <= dst_buffer_size), AZ_ERROR_NOT_ENOUGH_SPACE);
 
     uint32_t key_pos = 0;

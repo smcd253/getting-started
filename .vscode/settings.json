@@ -2,6 +2,7 @@
     "cmake.configureOnOpen": false,
     "git.ignoreLimitWarning": true,
     "files.associations": {
-        "tx_api.h": "c"
+        "tx_api.h": "c",
+        "az_ulib_result.h": "c"
     }
 }
